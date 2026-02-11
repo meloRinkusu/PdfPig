@@ -34,6 +34,10 @@
         /// </summary>
         public PdfPoint EndBaseLine { get; }
 
+        public PdfPoint StartTopLine { get; }
+
+        public PdfPoint EndTopLine { get; }
+
         /// <summary>
         /// The width occupied by the character within the PDF content.
         /// </summary>
@@ -134,6 +138,29 @@
                     pointSize, textSequence)
         { }
 
+        public Letter(string value,
+            PdfRectangle glyphRectangle,
+            PdfRectangle glyphRectangleLoose,
+            PdfPoint startBaseLine,
+            PdfPoint endBaseLine,
+            PdfPoint startTopLine,
+            PdfPoint endTopLine,
+            double width,
+            double fontSize,
+            IFont font,
+            TextRenderingMode renderingMode,
+            IColor strokeColor,
+            IColor fillColor,
+            double pointSize,
+            int textSequence) :
+                this(value, glyphRectangle, glyphRectangleLoose,
+                    startBaseLine, endBaseLine,
+                    startTopLine, endTopLine,
+                    width, fontSize, font.Details, font,
+                    renderingMode, strokeColor, fillColor,
+                    pointSize, textSequence)
+        { }
+
         /// <summary>
         /// Create a new letter to represent some text drawn by the Tj operator.
         /// </summary>
@@ -152,6 +179,29 @@
             int textSequence): 
                 this(value, glyphRectangle, glyphRectangleLoose,
                     startBaseLine, endBaseLine,
+                    width, fontSize, fontDetails, null,
+                    renderingMode, strokeColor, fillColor,
+                    pointSize, textSequence)
+        { }
+
+        public Letter(string value,
+            PdfRectangle glyphRectangle,
+            PdfRectangle glyphRectangleLoose,
+            PdfPoint startBaseLine,
+            PdfPoint endBaseLine,
+            PdfPoint startTopLine,
+            PdfPoint endTopLine,
+            double width,
+            double fontSize,
+            FontDetails fontDetails,
+            TextRenderingMode renderingMode,
+            IColor strokeColor,
+            IColor fillColor,
+            double pointSize,
+            int textSequence) :
+                this(value, glyphRectangle, glyphRectangleLoose,
+                    startBaseLine, endBaseLine,
+                    startTopLine, endTopLine,
                     width, fontSize, fontDetails, null,
                     renderingMode, strokeColor, fillColor,
                     pointSize, textSequence)
@@ -177,6 +227,50 @@
             GlyphRectangleLoose = glyphRectangleLoose;
             StartBaseLine = startBaseLine;
             EndBaseLine = endBaseLine;
+            Width = width;
+            FontSize = fontSize;
+            FontDetails = fontDetails;
+            _font = font;
+            RenderingMode = renderingMode;
+            if (renderingMode == TextRenderingMode.Stroke)
+            {
+                Color = StrokeColor = strokeColor ?? GrayColor.Black;
+                FillColor = fillColor;
+            }
+            else
+            {
+                Color = FillColor = fillColor ?? GrayColor.Black;
+                StrokeColor = strokeColor;
+            }
+            PointSize = pointSize;
+            TextSequence = textSequence;
+            TextOrientation = GetTextOrientation();
+        }
+
+        private Letter(string value,
+            PdfRectangle glyphRectangle,
+            PdfRectangle glyphRectangleLoose,
+            PdfPoint startBaseLine,
+            PdfPoint endBaseLine,
+            PdfPoint startTopLine,
+            PdfPoint endTopLine,
+            double width,
+            double fontSize,
+            FontDetails fontDetails,
+            IFont? font,
+            TextRenderingMode renderingMode,
+            IColor strokeColor,
+            IColor fillColor,
+            double pointSize,
+            int textSequence)
+        {
+            Value = value;
+            GlyphRectangle = glyphRectangle;
+            GlyphRectangleLoose = glyphRectangleLoose;
+            StartBaseLine = startBaseLine;
+            EndBaseLine = endBaseLine;
+            StartTopLine = startTopLine;
+            EndTopLine = endTopLine;
             Width = width;
             FontSize = fontSize;
             FontDetails = fontDetails;
