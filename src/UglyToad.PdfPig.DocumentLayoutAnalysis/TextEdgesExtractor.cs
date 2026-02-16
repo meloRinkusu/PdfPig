@@ -24,6 +24,14 @@
             Tuple.Create<EdgeType, Func<PdfRectangle, double>>(EdgeType.Right,  x => Math.Round(x.Right, 0))                // use BoundingBox's right coordinate
         ];
 
+        private static readonly Tuple<HorizontalEdgeType, Func<PdfRectangle, double>>[] horizontalEdgesFuncs =
+        [
+            Tuple.Create<HorizontalEdgeType, Func<PdfRectangle, double>>(HorizontalEdgeType.Bottom, x => Math.Round(x.Bottom, 0)),
+            Tuple.Create<HorizontalEdgeType, Func<PdfRectangle, double>>(HorizontalEdgeType.Mid,    x => Math.Round(x.Bottom + x.Height / 2, 0)),
+            Tuple.Create<HorizontalEdgeType, Func<PdfRectangle, double>>(HorizontalEdgeType.Top,    x => Math.Round(x.Top, 0))
+        ];
+
+
         /// <summary>
         /// Get the text edges.
         /// </summary>
@@ -87,6 +95,87 @@
 
             return cleanEdges.SelectMany(x => x.Value.Select(y => new PdfLine(x.Key, y.Min(w => w.BoundingBox.Bottom), x.Key, y.Max(w => w.BoundingBox.Top)))).ToList();
         }
+
+        public static IReadOnlyDictionary<HorizontalEdgeType, List<PdfLine>> GetHEdges(IEnumerable<Word> pageWords, int minimumElements = 4,
+            int maxDegreeOfParallelism = -1)
+        {
+            if (minimumElements < 0)
+                throw new ArgumentException("Minimum elements must be positive.", nameof(minimumElements));
+
+            var cleanWords = pageWords.Where(x => !string.IsNullOrWhiteSpace(x.Text.Trim()));
+
+            var dictionary = new ConcurrentDictionary<HorizontalEdgeType, List<PdfLine>>();
+
+            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
+
+            Parallel.ForEach(horizontalEdgesFuncs, parallelOptions,
+                f => dictionary.TryAdd(f.Item1, GetHorizontalLines(cleanWords, f.Item2, minimumElements)));
+
+            return dictionary.ToDictionary(x => x.Key, x => x.Value);
+        }
+
+        private static List<PdfLine> GetHorizontalLines(IEnumerable<Word> pageWords, Func<PdfRectangle, double> func, int minimumElements)
+        {
+            var edges = pageWords
+                .GroupBy(x => func(x.BoundingBox))
+                .Where(x => x.Count() >= minimumElements)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var cleanEdges = new Dictionary<double, List<List<Word>>>();
+
+            foreach (var edge in edges)
+            {
+                var sortedEdges = edge.Value
+                    .OrderBy(x => x.BoundingBox.Left)
+                    .ToList();
+
+                cleanEdges.Add(edge.Key, new List<List<Word>>());
+
+                var cuttings = pageWords
+                    .Except(edge.Value)
+                    // mots qui coupent la ligne horizontale
+                    .Where(x => x.BoundingBox.Bottom < edge.Key && x.BoundingBox.Top > edge.Key)
+                    // et dans les bornes horizontales du groupe
+                    .Where(k =>
+                        k.BoundingBox.Right > edge.Value.Min(z => z.BoundingBox.Left) &&
+                        k.BoundingBox.Left < edge.Value.Max(z => z.BoundingBox.Right))
+                    .OrderBy(x => x.BoundingBox.Left)
+                    .ToList();
+
+                if (cuttings.Count > 0)
+                {
+                    foreach (var cut in cuttings)
+                    {
+                        var group1 = sortedEdges
+                            .Where(x => x.BoundingBox.Right < cut.BoundingBox.Left)
+                            .ToList();
+
+                        if (group1.Count >= minimumElements)
+                            cleanEdges[edge.Key].Add(group1);
+
+                        sortedEdges = sortedEdges.Except(group1).ToList();
+                    }
+
+                    if (sortedEdges.Count >= minimumElements)
+                        cleanEdges[edge.Key].Add(sortedEdges);
+                }
+                else
+                {
+                    cleanEdges[edge.Key].Add(sortedEdges);
+                }
+            }
+
+            return cleanEdges
+                .SelectMany(x =>
+                    x.Value.Select(y =>
+                        new PdfLine(
+                            y.Min(w => w.BoundingBox.Left),
+                            x.Key,
+                            y.Max(w => w.BoundingBox.Right),
+                            x.Key)))
+                .ToList();
+        }
+
     }
 
     /// <summary>
@@ -108,5 +197,23 @@
         /// Text edges where words have their BoundingBox's right coordinate aligned on the same vertical line.
         /// </summary>
         Right = 2
+    }
+
+    public enum HorizontalEdgeType
+    {
+        /// <summary>
+        /// Text edges where words have their BoundingBox's left coordinate aligned on the same vertical line.
+        /// </summary>
+        Bottom = 0,
+
+        /// <summary>
+        /// Text edges where words have their BoundingBox's mid coordinate aligned on the same vertical line.
+        /// </summary>
+        Mid = 1,
+
+        /// <summary>
+        /// Text edges where words have their BoundingBox's right coordinate aligned on the same vertical line.
+        /// </summary>
+        Top = 2
     }
 }
