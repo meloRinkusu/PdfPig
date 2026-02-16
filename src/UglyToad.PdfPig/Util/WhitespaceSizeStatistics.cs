@@ -15,6 +15,8 @@
         /// <summary>
         /// Check if the measured gap is probably big enough to be a whitespace character based on the letter.
         /// </summary>
-        public static bool IsProbablyWhitespace(double gap, Letter letter) => gap > (GetExpectedWhitespaceSize(letter) - (letter.PointSize * 0.05));
+        public static bool IsProbablyWhitespace(double gap, Letter letter) => gap > (GetExpectedWhitespaceSize(letter) - (letter.PointSize * 0.10));
+
+        public static bool IsProbablyGap(double gap, Letter letter) => gap > (letter.PointSize * 4);
     }
 }

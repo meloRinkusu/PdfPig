@@ -41,9 +41,13 @@
         /// </summary>
         public IReadOnlyList<TextLine> GetLines(string wordSeparator)
         {
-            return Words.GroupBy(x => x.BoundingBox.Bottom)
+            /*var t = Words.GroupBy(x => x.BoundingBox.Bottom)
+                .Select(x => new TextLine(x.OrderByReadingOrder(), wordSeparator))
+                .OrderByReadingOrder();*/
+            var words = Words.GroupBy(x => Math.Round(x.BoundingBox.Bottom, 1, MidpointRounding.AwayFromZero))
                 .Select(x => new TextLine(x.OrderByReadingOrder(), wordSeparator))
                 .OrderByReadingOrder();
+            return words;
         }
 
         /// <summary>
