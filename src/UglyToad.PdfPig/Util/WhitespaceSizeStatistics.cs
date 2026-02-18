@@ -17,6 +17,6 @@
         /// </summary>
         public static bool IsProbablyWhitespace(double gap, Letter letter) => gap > (GetExpectedWhitespaceSize(letter) - (letter.PointSize * 0.10));
 
-        public static bool IsProbablyGap(double gap, Letter letter) => gap > (letter.PointSize * 4);
+        public static bool IsProbablyGap(double gap, Letter letter) => gap > (letter.PointSize * 3);
     }
 }
